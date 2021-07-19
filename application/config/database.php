@@ -72,12 +72,29 @@
 $active_group = 'default';
 $query_builder = TRUE;
 
+
+
+
+if($_SERVER['HTTP_HOST']=="localhost")
+{
+	$hostname = 'localhost';
+	$username = 'sonu';
+	$password = 'password';
+	$database = 'ssnodb';
+
+}else{
+	$db['default']['hostname'] = 'localhost';
+	$db['default']['username'] = 'admin_hms_new';
+	$db['default']['password'] = 'mJA1lfevZX';
+	$db['default']['database'] = 'admin_hms_new';
+}
+
 $db['default'] = array(
 	'dsn'	=> '',
-	'hostname' => 'localhost',
-	'username' => 'sonu',
-	'password' => 'password',
-	'database' => 'ssnodb',
+	'hostname' => $hostname,
+	'username' => $username,
+	'password' => $password,
+	'database' => $database,
 	'dbdriver' => 'mysqli',
 	'dbprefix' => '',
 	'pconnect' => FALSE,

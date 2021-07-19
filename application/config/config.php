@@ -24,7 +24,15 @@ defined('BASEPATH') OR exit('No direct script access allowed');
   | a PHP script and you can easily do that on your own.
   |
  */
-$config['base_url'] = 'http://localhost/dot-com-labs/smart-hospital-hospital-management-system/smart_hospital_src/';
+
+
+if($_SERVER['HTTP_HOST']=="localhost")
+{
+  $config['base_url'] = 'http://localhost/dot-com-labs/smart-hospital-hospital-management-system/smart_hospital_src/';
+}else{
+  $config['base_url'] = 'https://ottowala.in/hms_new/';
+
+}
 
 
 /*
