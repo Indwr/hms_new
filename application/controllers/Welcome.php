@@ -283,4 +283,7 @@ class Welcome extends Front_Controller
         $this->load_theme('pages/read');
     }
 
+
+
+
 }

@@ -1,18 +1,26 @@
 <?php
 
+use Razorpay\Api\Api;
+use Razorpay\Api\Errors\SignatureVerificationError;
+
 if (!defined('BASEPATH')) {
     exit('No direct script access allowed');
 }
-
+// use Razorpay\Api\Api;
+// use Razorpay\Api\Errors\SignatureVerificationError;
 class Site extends Public_Controller
 {
     public function __construct()
     {
         parent::__construct();
+        require realpath(APPPATH . '../vendor/autoload.php');
+        date_default_timezone_set("Asia/Kolkata");
         $this->check_installation();
         if ($this->config->item('installed') == true) {
             $this->db->reconnect();
         }
+        $this->load->library(array('form_validation'));
+
 
         $this->load->library('Auth');
         $this->load->library('Enc_lib');
@@ -203,7 +211,6 @@ class Site extends Public_Controller
         if (!$role || !$verification_code) {
             show_404();
         }
-
         $user = $this->user_model->getUserByCodeUsertype($role, $verification_code);
 
         if ($user) {
@@ -396,5 +403,193 @@ class Site extends Public_Controller
                 $this->load->view('userlogin', $data);
             }
         }
+    }
+
+
+
+    public function upgrade(){
+       
+        $checkUpgrade = (isset($_SESSION['hospitaladmin']['id'])) ? $_SESSION['hospitaladmin']['id'] : null;
+        if(!null){
+            $upgradeData = $this->user_model->checkSubscription($checkUpgrade);
+        }
+        $months = $this->checkMonthFromDate($upgradeData->subscriptionActiveTime);
+        // if($months['month'] == $months['currentMonth']){
+            $response['id'] = $checkUpgrade;
+            $where = [];
+            $order = 'asc';
+            $response['getSubscriptionsPlans'] = $this->user_model->getData('subscription_plans',$where,$order);
+            $this->load->view('upgrade',$response);
+        // }else{
+        //     redirect($_SERVER['HTTP_REFERER']);
+        // }
+    }
+
+    public function upgradeCircle(){
+        if ($this->input->server('REQUEST_METHOD') == 'POST') {
+            $data = $this->security->xss_clean($this->input->post());
+            $where = ['id' => $_SESSION['hospitaladmin']['id']];
+            $userData = $this->user_model->getData('staff',$where,'asc');
+            $this->form_validation->set_rules('startDate', 'Start Date', 'trim|required|xss_clean');
+            $this->form_validation->set_rules('endDate', 'End Date', 'trim|required|xss_clean');
+            $this->form_validation->set_rules('amount', 'Amount', 'trim|required|xss_clean|numeric');
+            $this->form_validation->set_rules('circle', 'Circle', 'trim|required|xss_clean|numeric');
+            if ($this->form_validation->run() != FALSE) {
+                $api =   new Api('rzp_test_65XcijwZsuxIGr', 'VxawI2eWSo9H0krjCj1jxYQT');
+                
+                // $api = new Api('rzp_test_65XcijwZsuxIGr', 'VxawI2eWSo9H0krjCj1jxYQT');
+                $keyId = 'rzp_test_65XcijwZsuxIGr';
+                //
+                // We create an razorpay order using orders api
+                // Docs: https://docs.razorpay.com/docs/orders
+                //
+               
+                    $orderData = [
+                        'receipt'         => uniqid(),
+                        'amount'          => $data['amount'] * 100, // 2000 rupees in paise
+                        'currency'        => 'INR',
+                        'payment_capture' => 1 // auto capture
+                    ];
+
+                    $razorpayOrder = $api->order->create($orderData);
+
+                    $razorpayOrderId = $razorpayOrder['id'];
+
+                    $_SESSION['razorpay_order_id'] = $razorpayOrderId;
+
+                    $displayAmount = $amount = $orderData['amount'];
+                    $data = [
+                        "key"               => $keyId,
+                        "amount"            => $amount,
+                        "name"              => $userData[0]->name,
+                        "description"       => "Subscription Payment",
+                        "image"             => base_url('uploads/hospital_content/logo/0.png'),
+                        "prefill"           => [
+                        "name"              => $userData[0]->name,
+                        "email"             => $_SESSION['hospitaladmin']['email'],
+                        "contact"           => $userData[0]->contact_no,
+                        ],
+                        "notes"             => [
+                        "user_id"           => $userData[0]->id,
+                        "amount"            => $data['amount'],
+                        "startDate"            => $data['startDate'],
+                        "circle"            => $data['circle'],
+                        "address"           => $userData[0]->permanent_address,
+                        ],
+                        "theme"             => [
+                        "color"             => "#F37254"
+                        ],
+                        "order_id"          => $razorpayOrderId,
+                    ];
+                    $response['json'] = json_encode($data);
+                    $response['data'] = $data;
+                    $this->load->view("checkout/automatic", $response);
+            }else{
+                $this->session->set_flashdata('error', strip_tags(validation_errors()));
+                redirect($_SERVER['HTTP_REFERER']);
+            }
+        }else{
+            redirect($_SERVER['HTTP_REFERER']);
+        }
+    }
+
+    public function verify(){
+            $success = true;
+            $error = "Payment Failed";
+            if (empty($_POST['razorpay_payment_id']) === false)
+            {
+                $api = new Api('rzp_test_65XcijwZsuxIGr', 'VxawI2eWSo9H0krjCj1jxYQT');
+
+                try
+                {
+                    // Please note that the razorpay order ID must
+                    // come from a trusted source (session here, but
+                    // could be database or something else)
+                    $attributes = array(
+                        'razorpay_order_id' => $_SESSION['razorpay_order_id'],
+                        'razorpay_payment_id' => $_POST['razorpay_payment_id'],
+                        'razorpay_signature' => $_POST['razorpay_signature']
+                    );
+
+                   $api->utility->verifyPaymentSignature($attributes);
+                }
+                catch(SignatureVerificationError $e)
+                {
+                    $success = false;
+                    $error = 'Razorpay Error : ' . $e->getMessage();
+                }
+            }
+            $payments = $api->order->fetch($_SESSION['razorpay_order_id'])->payments();
+         
+            $paymentGetwayResponseData['id'] = $payments->items[0]->id;
+            $paymentGetwayResponseData['entity'] = $payments->items[0]->entity;
+            $paymentGetwayResponseData['amount'] = $payments->items[0]->amount;
+            $paymentGetwayResponseData['currency'] = $payments->items[0]->currency;
+            $paymentGetwayResponseData['status'] = $payments->items[0]->status;
+            $paymentGetwayResponseData['order_id'] = $payments->items[0]->order_id;
+            $paymentGetwayResponseData['invoice_id'] = $payments->items[0]->invoice_id;
+            $paymentGetwayResponseData['international'] = $payments->items[0]->international;
+            $paymentGetwayResponseData['method'] = $payments->items[0]->method;
+            $paymentGetwayResponseData['amount_refunded'] = $payments->items[0]->amount_refunded;
+            $paymentGetwayResponseData['refund_status'] = $payments->items[0]->refund_status;
+            $paymentGetwayResponseData['captured'] = $payments->items[0]->captured;
+            $paymentGetwayResponseData['description'] = $payments->items[0]->description;
+            $paymentGetwayResponseData['card_id'] = $payments->items[0]->card_id;
+            $paymentGetwayResponseData['bank'] = $payments->items[0]->bank;
+            $paymentGetwayResponseData['wallet'] = $payments->items[0]->wallet;
+            $paymentGetwayResponseData['vpa'] = $payments->items[0]->vpa;
+            $paymentGetwayResponseData['email'] = $payments->items[0]->email;
+            $paymentGetwayResponseData['contact'] = $payments->items[0]->contact;
+            $paymentGetwayResponseData['notes']['user_id'] = $payments->items[0]->notes['user_id'];
+            $paymentGetwayResponseData['notes']['amount'] = $payments->items[0]->notes['amount'];
+            $paymentGetwayResponseData['notes']['startDate'] = $payments->items[0]->notes['startDate'];
+            $paymentGetwayResponseData['notes']['circle'] = $payments->items[0]->notes['circle'];
+            $paymentGetwayResponseData['notes']['address'] = $payments->items[0]->notes['address'];
+        
+            $paymentGetwayResponseData['fee'] = $payments->items[0]->fee;
+            $paymentGetwayResponseData['tax'] = $payments->items[0]->tax;
+            $paymentGetwayResponseData['error_code'] = $payments->items[0]->error_code;
+            $paymentGetwayResponseData['error_description'] = $payments->items[0]->error_description;
+            $paymentGetwayResponseData['error_source'] = $payments->items[0]->error_source;
+            $paymentGetwayResponseData['error_step'] = $payments->items[0]->error_step;
+            $paymentGetwayResponseData['error_reason'] = $payments->items[0]->error_reason;
+            $paymentGetwayResponseData['acquirer_data']['bank_transaction_id'] = $payments->items[0]->acquirer_data['bank_transaction_id'];
+            $paymentGetwayResponseData['created_at'] = $payments->items[0]->created_at;
+            $insertData = [
+                'user_id' => $payments->items[0]->notes['user_id'],
+                'amount' => $payments->items[0]->notes['amount'], 
+                'circle' => $payments->items[0]->notes['circle'],
+                'isActive' => 2,
+                'subscriptionActiveTime' => $payments->items[0]->notes['startDate'],
+                'paymentId' => $payments->items[0]->id,
+                'paymentResponse' => json_encode($paymentGetwayResponseData), 
+            ];
+            $this->user_model->addData('subscription',$insertData);
+            if ($success === true)
+            {
+                redirect(base_url('admin/admin/dashboard'));
+            }
+            else
+            {
+                $html = "<p>Your payment failed</p>
+                        <p>{$error}</p>
+                        <a href='".base_url('upgrade')."'>Please Complete Your Payment Process</a>
+                        ";
+                        
+            }
+
+            echo $html;
+            die();
+    //   $this->load->view('checkout/verify');
+    }
+
+    public function checkMonthFromDate($date){
+        $time=strtotime($date);
+        $currentDate = date('Y-m-d H:i:s');
+        $currentTime=strtotime($currentDate);
+        $data['month'] = date("F",$time);
+        $data['currentMonth'] = date("F",$currentTime);
+        return $data;
+        // $year=date("Y",$time);
     }
 }

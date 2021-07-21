@@ -23,6 +23,12 @@ class User_model extends CI_Model
         }
     }
 
+    public function addData($table,$data)
+    {
+        $this->db->insert($table, $data);
+        return $this->db->insert_id();
+    }
+
     public function updateUser($id, $status)
     {
         $query     = $this->db->select("users.id")->where("user_id", $id)->get("users");
@@ -234,6 +240,26 @@ class User_model extends CI_Model
         } else {
             return false;
         }
+    }
+
+
+    public function checkSubscription($id){
+        $this->db->select('*');
+        $this->db->from('subscription');
+        $this->db->where('id',$id);
+        $this->db->order_by('id','desc');
+        $this->db->limit(1);
+        $query = $this->db->get();
+        return $query->row();
+    }
+
+    public function getData($table,$where,$order){
+        $this->db->select('*');
+        $this->db->from($table);
+        $this->db->where($where);
+        $this->db->order_by('id',$order);
+        $query = $this->db->get();
+        return $query->result();
     }
 
     public function getLoginDetails($student_id)

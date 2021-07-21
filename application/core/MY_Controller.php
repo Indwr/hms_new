@@ -44,9 +44,51 @@ class Admin_Controller extends MY_Controller {
         parent::__construct();
         $this->load->library('rbac');
         $this->auth->is_logged_in();
+        $this->checkSubscription();
         // $this->check_license();
     }
 
+
+
+   public function checkSubscription(){
+    date_default_timezone_set("Asia/Kolkata");
+    
+        $this->db->select('*');
+        $this->db->from('subscription');
+        $this->db->where('user_id',$_SESSION['hospitaladmin']['id']);
+        $this->db->order_by('id','desc');
+        $this->db->limit(1);
+        $query = $this->db->get();
+        $data = $query->row();
+       
+        if(empty($data)){
+            redirect(base_url('upgrade'));
+            exit();
+        }
+        $totalMinutes = ($data->circle*30)*($data->circle*1440); // 30 days pack
+        $checkTimeInMinutes = $this->calculateMinutes($data->subscriptionActiveTime);
+        //  echo "Use Minutes ". $checkTimeInMinutes;
+        //  echo "<br>";
+        //  echo "Total Earning Minutes ". $totalMinutes;
+        if(isset($_SESSION['hospitaladmin']['id'])){
+            if($checkTimeInMinutes > $totalMinutes){
+              redirect(base_url('upgrade'));
+            }
+          return true;
+        }else{
+            redirect(base_url('site/login'));
+        }
+   }
+
+
+
+
+   public function calculateMinutes($activationTime){
+    $currentDate = date("Y-m-d H:i:s");
+    $to_time = strtotime($currentDate);
+    $from_time = strtotime($activationTime);
+    return round(abs($to_time - $from_time) / 60,0);
+   }
       public function check_license()
     {
 
