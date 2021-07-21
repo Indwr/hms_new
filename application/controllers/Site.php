@@ -409,9 +409,17 @@ class Site extends Public_Controller
 
     public function upgrade(){
        
-        $checkUpgrade = (isset($_SESSION['hospitaladmin']['id'])) ? $_SESSION['hospitaladmin']['id'] : null;
-        if(!null){
-            $upgradeData = $this->user_model->checkSubscription($checkUpgrade);
+        $checkUpgrade = (isset($_SESSION['hospitaladmin']['id'])) ? $_SESSION['hospitaladmin']['id'] : '';
+        
+        if(!empty($checkUpgrade)){
+            $upgradeData = $this->user_model->checkSubscription2($checkUpgrade);
+            $subscriptionMonth = $this->checkMonthFromDate($upgradeData->created_at);
+            $currentMonth = $this->checkMonthFromDate(date('Y-m-d H:i:s'));
+            if($subscriptionMonth == $currentMonth){
+              redirect(base_url('admin/admin/dashboard'));
+            }
+        }else{
+            redirect(base_url('admin/admin/dashboard'));
         }
         $months = $this->checkMonthFromDate($upgradeData->subscriptionActiveTime);
         // if($months['month'] == $months['currentMonth']){

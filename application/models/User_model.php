@@ -253,6 +253,16 @@ class User_model extends CI_Model
         return $query->row();
     }
 
+    public function checkSubscription2($id){
+        $this->db->select('*');
+        $this->db->from('subscription');
+        $this->db->where('user_id',$id);
+        $this->db->order_by('id','desc');
+        $this->db->limit(1);
+        $query = $this->db->get();
+        return $query->row();
+    }
+
     public function getData($table,$where,$order){
         $this->db->select('*');
         $this->db->from($table);
