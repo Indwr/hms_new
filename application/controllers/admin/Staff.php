@@ -1,4 +1,6 @@
 <?php
+use Razorpay\Api\Api;
+use Razorpay\Api\Errors\SignatureVerificationError;
 
 if (!defined('BASEPATH')) {
     exit('No direct script access allowed');
@@ -10,6 +12,7 @@ class Staff extends Admin_Controller
     public function __construct()
     {
         parent::__construct();
+        require realpath(APPPATH . '../vendor/autoload.php');
         $this->config->load("payroll");
         $this->load->library('Enc_lib');
         $this->load->library('mailsmsconf');
@@ -161,7 +164,84 @@ class Staff extends Admin_Controller
         $this->load->view('admin/staff/disablestaff', $data);
         $this->load->view('layout/footer', $data);
     }
+    public function upgrade($id)
+    {
+            $checkUpgrade = $id;
+            $response['id'] = $checkUpgrade;
+            $where = [];
+            $order = 'asc';
+            $response['getSubscriptionsPlans'] = $this->user_model->getData('subscription_plans',$where,$order);
+            $where2 = ['user_id' => $checkUpgrade];
+            $response['getLastSubscriptions'] = $this->user_model->getDataWithLimit('subscription',$where2,'desc',1);
+            $response['upgradeId'] = $checkUpgrade;
+            $this->load->view('admin/upgrade',$response);
+    }
 
+    public function upgradeCircle($id){
+        if ($this->input->server('REQUEST_METHOD') == 'POST') {
+            $data = $this->security->xss_clean($this->input->post());
+            $where = ['id' => $id];
+            $userData = $this->user_model->getData('staff',$where,'asc');
+            $this->form_validation->set_rules('startDate', 'Start Date', 'trim|required|xss_clean');
+            $this->form_validation->set_rules('endDate', 'End Date', 'trim|required|xss_clean');
+            $this->form_validation->set_rules('amount', 'Amount', 'trim|required|xss_clean|numeric');
+            $this->form_validation->set_rules('circle', 'Circle', 'trim|required|xss_clean|numeric');
+            if ($this->form_validation->run() != FALSE) {
+                $api =   new Api('rzp_test_65XcijwZsuxIGr', 'VxawI2eWSo9H0krjCj1jxYQT');
+                $keyId = 'rzp_test_65XcijwZsuxIGr';
+                //
+                // We create an razorpay order using orders api
+                // Docs: https://docs.razorpay.com/docs/orders
+                //
+               
+                    $orderData = [
+                        'receipt'         => uniqid(),
+                        'amount'          => $data['amount'] * 100, // 2000 rupees in paise
+                        'currency'        => 'INR',
+                        'payment_capture' => 1 // auto capture
+                    ];
+
+                    $razorpayOrder = $api->order->create($orderData);
+
+                    $razorpayOrderId = $razorpayOrder['id'];
+
+                    $_SESSION['razorpay_order_id'] = $razorpayOrderId;
+
+                    $displayAmount = $amount = $orderData['amount'];
+                    $data = [
+                        "key"               => $keyId,
+                        "amount"            => $amount,
+                        "name"              => $userData[0]->name,
+                        "description"       => "Subscription Payment",
+                        "image"             => base_url('uploads/hospital_content/logo/0.png'),
+                        "prefill"           => [
+                        "name"              => $userData[0]->name,
+                        "email"             => $_SESSION['hospitaladmin']['email'],
+                        "contact"           => $userData[0]->contact_no,
+                        ],
+                        "notes"             => [
+                        "user_id"           => $userData[0]->id,
+                        "amount"            => $data['amount'],
+                        "startDate"            => $data['startDate'],
+                        "circle"            => $data['circle'],
+                        "address"           => $userData[0]->permanent_address,
+                        ],
+                        "theme"             => [
+                        "color"             => "#F37254"
+                        ],
+                        "order_id"          => $razorpayOrderId,
+                    ];
+                    $response['json'] = json_encode($data);
+                    $response['data'] = $data;
+                    $this->load->view("admin/checkout/automatic", $response);
+            }else{
+                $this->session->set_flashdata('error', strip_tags(validation_errors()));
+                redirect($_SERVER['HTTP_REFERER']);
+            }
+        }else{
+            redirect($_SERVER['HTTP_REFERER']);
+        }
+    }
     public function profile($id)
     {
         if (!$this->rbac->hasPrivilege('staff', 'can_view')) {

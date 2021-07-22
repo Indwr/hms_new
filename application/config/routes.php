@@ -68,5 +68,9 @@ $route['upgrade']['get'] = 'site/upgrade';
 $route['upgrade/package']['post'] = 'site/upgradeCircle';
 $route['upgrade/verify']['post'] = 'site/verify';
 
+$route['admin/staff/profile/(:num)/upgrade']['get'] = 'admin/staff/upgrade/$1';
+
+$route['admin/staff/profile/(:num)/upgrade/package']['post'] = 'admin/staff/upgradeCircle/$1';
+
 
 

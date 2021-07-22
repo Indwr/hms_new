@@ -798,7 +798,13 @@ if ($staff['id'] == $logged_in_User['id']) {
                             </div>
                         </div>  
                         <div class="tab-pane" id="billingh">
+                       
                             <div class="timeline-header no-border">
+                           <?php if ($this->rbac->hasPrivilege('staff_timeline', 'can_add')) {
+                             
+                               ?>
+                                    <a href="<?= base_url('admin/staff/profile/'.$staff_doc_id.'/upgrade') ?>" class="btn btn-sm btn-primary pull-left">Pay Scheduled Payment</a>
+                                <?php } ?>
                                 <div class="download_label"><?= 'billing_details' ?> <?php echo $staff["name"] . " " . $staff["surname"]; ?></div>
                                 <div class="table-responsive" style="clear: both;">
                                     <table class="table table-striped table-bordered table-hover example">

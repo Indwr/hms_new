@@ -271,6 +271,15 @@ class User_model extends CI_Model
         $query = $this->db->get();
         return $query->result();
     }
+    public function getDataWithLimit($table,$where,$order,$limit){
+        $this->db->select('*');
+        $this->db->from($table);
+        $this->db->where($where);
+        $this->db->order_by('id',$order);
+        $this->db->limit($limit);
+        $query = $this->db->get();
+        return $query->result();
+    }
 
     public function getLoginDetails($student_id)
     {
