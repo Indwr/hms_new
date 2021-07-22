@@ -43,6 +43,12 @@ class Leaverequest_model extends CI_model
         return $query->result_array();
     }
 
+    public function getData($table,$id)
+    {
+        $query = $this->db->select('*')->where('user_id',$id)->get($table);
+        return $query->result();
+    }
+
     public function addLeaveRequest($data)
     {
         if (isset($data['id'])) {

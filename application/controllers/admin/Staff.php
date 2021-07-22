@@ -167,6 +167,7 @@ class Staff extends Admin_Controller
         if (!$this->rbac->hasPrivilege('staff', 'can_view')) {
             access_denied();
         }
+       
         $data['enable_disable'] = 1;
         $staff_data             = $this->session->flashdata('staff_data');
         $data['staff_data']     = $staff_data;
@@ -184,12 +185,14 @@ class Staff extends Admin_Controller
         $data["timeline_list"]       = $timeline_list;
         $staff_payroll               = $this->staff_model->getStaffPayroll($id);
         $staff_leaves                = $this->leaverequest_model->staff_leave_request($id);
+        $billingData                = $this->leaverequest_model->getData('subscription',$id);
         $alloted_leavetype           = $this->staff_model->allotedLeaveType($id);
         $salary                      = $this->payroll_model->getSalaryDetails($id);
         $attendencetypes             = $this->staffattendancemodel->getStaffAttendanceType();
         $data['attendencetypeslist'] = $attendencetypes;
         $i                           = 0;
         $leaveDetail                 = array();
+       
         foreach ($alloted_leavetype as $key => $value) {
             $count_leaves[]                   = $this->leaverequest_model->countLeavesData($id, $value["leave_type_id"]);
             $leaveDetail[$i]['type']          = $value["type"];
@@ -197,8 +200,10 @@ class Staff extends Admin_Controller
             $leaveDetail[$i]['approve_leave'] = $count_leaves[$i]['approve_leave'];
             $i++;
         }
+        
         $data["leavedetails"]  = $leaveDetail;
         $data["staff_leaves"]  = $staff_leaves;
+        $data['billingData']   = $billingData;
         $data['staff_doc_id']  = $id;
         $data['staff']         = $staff_info;
         $data['staff_payroll'] = $staff_payroll;
@@ -209,16 +214,17 @@ class Staff extends Admin_Controller
         $data['yearlist']      = $this->staffattendancemodel->attendanceYearCount();
         $year                  = date("Y");
         $j                     = 0;
-        for ($n = 1; $n <= 31; $n++) {
+        for ($n = 1; $n <= 28; $n++) {
             $att_date           = sprintf("%02d", $n);
             $attendence_array[] = $att_date;
             foreach ($monthlist as $key => $value) {
                 $datemonth       = date("m", strtotime($value));
                 $att_dates       = $year . "-" . $datemonth . "-" . sprintf("%02d", $n);
                 $date_array[]    = $att_dates;
+               
                 $res[$att_dates] = $this->staffattendancemodel->searchStaffattendance($id, $att_dates);
             }
-
+           
             $j++;
         }
         $start_year               = date("Y");

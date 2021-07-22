@@ -184,6 +184,7 @@ if ($staff['id'] == $logged_in_User['id']) {
                         <?php } ?>
                         <li class=""><a href="#documents" data-toggle="tab" aria-expanded="true"><?php echo $this->lang->line('document'); ?></a></li>                       
                         <li class=""><a href="#timelineh" data-toggle="tab" aria-expanded="true"><?php echo $this->lang->line('timeline'); ?></a></li>  
+                        <li class=""><a href="#billingh" data-toggle="tab" aria-expanded="true"><?php echo $this->lang->line('billing'); ?></a></li>  
 
                     </ul>
                     <div class="tab-content">
@@ -795,7 +796,67 @@ if ($staff['id'] == $logged_in_User['id']) {
                                     </table>
                                 </div>
                             </div>
-                        </div>                      
+                        </div>  
+                        <div class="tab-pane" id="billingh">
+                            <div class="timeline-header no-border">
+                                <div class="download_label"><?= 'billing_details' ?> <?php echo $staff["name"] . " " . $staff["surname"]; ?></div>
+                                <div class="table-responsive" style="clear: both;">
+                                    <table class="table table-striped table-bordered table-hover example">
+                                        <thead>
+                                            <th>Sr No.</th>
+                                        <th><?php echo $this->lang->line('amount'); ?></th>
+                                        <th><?php echo 'Circle' ?></th>
+                                        <th><?php echo 'Payment Status' ?></th>
+                                        <th><?php echo 'Subscription Active Time' ?></th>
+                                        <th><?php echo 'Subscription Status' ?></th>
+                                        </thead>
+                                        <tbody>
+                                            <?php
+                                           $ii = 1;
+                                            foreach ($billingData as $key => $value) {
+                                                if($value->isActive == 0){
+                                                   $label = "class='label label-danger'";
+                                                   $status = "Pending";
+                                                }
+                                                if($value->isActive == 1){
+                                                    $label = "class='label label-warning'";
+                                                    $status = "Processing";
+                                                }
+                                                if($value->isActive == 2){
+                                                    $label = "class='label label-success'";
+                                                    $status = "Completed";
+                                                }
+                                                $expireDate = date('Y-m-d H:i:s', strtotime("+".$value->circle." months", strtotime($value->subscriptionActiveTime)));
+
+                                                $date = date('Y-m-d H:i:s');
+                                           
+	
+	
+                                                if($value->subscriptionActiveTime < $date AND $expireDate > $date){
+                                                    $subscriptionStatus = 'Active';
+                                                    $labels = "class='label label-success'";
+                                                }elseif($value->subscriptionActiveTime > $date){
+                                                    $subscriptionStatus = 'Scheduled';
+                                                    $labels = "class='label label-primary'";
+                                                }else{
+                                                    $subscriptionStatus = 'Expired';
+                                                    $labels = "class='label label-danger'";
+                                                }
+                                                ?>
+                                                <tr>
+                                                    <td><?= $ii++ ?></td>
+                                                    <td><?= $value->amount ?></td>
+                                                    <td><?= $value->circle ?></td>
+                                                    <td><label <?= $label ?>><?= $status ?></label></td>
+                                                    <td><?= $value->subscriptionActiveTime ?></td>
+                                                     <td><label <?= $labels ?>><?= $subscriptionStatus ?></label></td>
+                                                </tr>
+                                            <?php } ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>                 
                     </div>
                 </div>
             </div>
